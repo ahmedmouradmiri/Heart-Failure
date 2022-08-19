@@ -1,0 +1,416 @@
+---
+title: "Datamining "
+author: "1ba2 "
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    social: menu
+    source_code: embed
+    theme:
+      version: 4
+      bg: "#101010"
+      fg: "#FDF7F7" 
+      primary: "#ED79F9"
+      navbar-bg: "#3ADAC6"
+      base_font: 
+        google: Prompt
+      heading_font:
+        google: Sen
+      code_font:
+        google: 
+          # arguments to sass::font_google() 
+          family: JetBrains Mono
+          local: false
+vertical_layout: fill
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(ggplot2)
+library(FactoMineR)
+library(corrgram)
+library(corrplot)
+library(factoextra)
+library(plotly)
+library(shiny)
+```
+
+```{r include=FALSE}
+df=read.csv((file = file.choose()),header = TRUE,sep = ';')
+View(df)
+str(df)
+```
+
+
+```{r}
+library(dplyr)
+attach(df)
+df = mutate(df, anaemia  = as.factor(anaemia))
+df = mutate(df, diabetes = as.factor(diabetes))
+df = mutate(df, high_blood_pressure=as.factor(high_blood_pressure))
+df = mutate(df, sex = as.factor(sex))
+df = mutate(df, smoking = as.factor(smoking))
+df = mutate(df, age = as.integer (age))
+```
+ 
+
+
+Description
+========================================================================
+row
+-------------------------------------------------
+### STR
+```{r echo=FALSE}
+str(df)
+```
+
+
+### Description :
+
+Nous disposons d'un jeu de données qui contient 13 variables et 299 observation 
+divisés entre 7 variables quantitatives qui sont (age,creatinine_phosphokinase,
+ejection_fraction,platelets ,serum_creatinine,serum_sodium,time ) 
+et de 6 variables catégorielles labelisés (0,1) qui sont (anaemia,diabetes,
+high_blood_pressure,sex,smoking).
+
+Explication des variables :
+  
+  * anaemia : 0 = NO / 1= YES
+  * diabetes : 0 = NO / 1 = YES
+  * high_blood_pressure: 0 = NO / 1= YES
+  * sex : 0 = FEMME / 1 = HOMME
+  * smoking : 0 = NO / 1 = YES
+
+
+Exploratory
+========================================================================
+row
+------------------------------------------------------------------------
+### smoking/Age
+
+
+```{r echo=FALSE}
+xx=ggplot(df,aes(x=smoking,y=age,fill=sex))+geom_boxplot()
+ggplotly(xx)
+
+```
+
+
+
+
+
+
+
+### ejection_fraction / Platelets
+
+```{r}
+pp=ggplot(df,aes(x=diabetes,y=ejection_fraction,fill=sex))+geom_boxplot()
+ggplotly(pp)
+```
+
+
+Row
+-------------------------------------
+### Diabetes/ High blood pressure
+
+```{r}
+a= table(df$high_blood_pressure,df$diabetes)
+mosaicplot(a,main = 'Mosaicplot Diabetes/High blood pressure',xlab = 'Diabetes',ylab ='High blood pressure' ,color = c('blue','red'))
+```
+
+
+### Age/Serum_sodium
+```{r message=FALSE, warning=FALSE}
+a= ggplot(df,aes(x=df$age,y=df$serum_sodium))+ geom_point() + geom_smooth(method = lm)
+ggplotly(a)
+
+```
+
+
+### Corrgramm
+
+```{r}
+df=lapply(df,FUN = as.numeric)
+df=as.data.frame(df)
+```
+
+```{r}
+corrgram(df,order = TRUE,lower.panel = panel.conf)
+```
+
+
+Principal component Analysis 
+========================
+row(1)
+-----------------------------------------------------------------------
+```{r}
+res.pca=PCA(df,ncp = 13 , quali.sup = c(2,4,6,10,11),graph = FALSE)
+```
+
+
+### Eiguen Value
+
+```{r echo=FALSE}
+res.pca$eig
+```
+
+
+
+
+Qualité de représentation
+
+
+```{r echo=FALSE}
+res.pca$var$cos2
+```
+
+
+
+ Corrélation de chaque variable avec les dimension 
+
+```{r echo=FALSE}
+res.pca$var$cor
+```
+
+
+
+ Contribution de chaque variable dans la création des dimensions 
+```{r}
+res.pca$var$contrib
+```
+ Analyse :
+ 
+ 
+  * Eiguen-Value:
+ 
+ 
+ 
+ dans le tableau des valeurs propres on peut distinguer que notre base de données 
+ se représente par 7 dimensions , avec des valeurs propres allont de 0.7289489 de la septième dimension jusqu'à 
+ 1.4746451 pour la première dimension.
+ Chaque dimensions à un pourcentage d'inertie de la base de données, on trouve la première dimensions avec 
+ 21.06636% d'apport d'information, la deuxième avec 16.79% , la troisième avec 14.70% la quaterième avec 13.80% ,
+ le reste des dimensions avec 12.68% , 10.53% et 10.41% pour la dernière.
+ 
+ 
+  * COS2 :
+ 
+ 
+ Pour la qualité de représentation on distingue que la variable :
+ 
+ 
+ 
+- Age est bien représenté sur la première dimension
+- Creatinine-phosphikinase : est bien représenté sur la dim 3 et 4 .
+- ejection_fraction : bien représenté sur la dim 2 avec 0.54 et syr la dim 5 avec 0.19
+-platelets : bien représenté sur la dimensions 4 
+- serum_creatinine : bien représenté sur la dimension 1 et 5
+- serum_sodium : bien représenté sur la dim 1 , 2 et 7 
+- time : bien représenté sur la dim 1 
+
+ 
+ 
+ 
+ 
+ 
+  * Contrib :
+
+
+ Dans ce tableau nous analysons la contribution de chaque variable dans la création de chaque axe.
+
+ 
+ 
+ Les variables qui ont contribués le plus dans la création de :
+ 
+ 
+ 
+ - dim1 : Age , Serum_Creatinine , Serum_Sodium et time
+ - dime2 : Age , ejection_fraction , serum_sodium
+ - dim3 : creatinine_phosphokenase , platelets et time
+ - dim4 : principalement platelets avec 67.42 , creatinine et serum_sodium
+ - dim5 : ejection_fraction , serum_creatinine et time 
+ - dim6 : Age ,time et ejection_fraction 
+ - dim 7 : serum_sodium ,ejection_fraction et age .
+ 
+ 
+ 
+
+
+
+
+
+Visualisation PCA
+===============================
+
+Row
+------------------------------------
+### Graph des individus sur les axes (1,2)
+
+```{r}
+fviz_pca_ind(res.pca,axes = c(1,2),habillage = c(10
+                                                 ))
+View(df)
+```
+ 
+
+### Graph des variables sur l'axes(1,2)
+```{r}
+fviz_pca_var(res.pca,axes = c(1,2),col.var = "blue",col.circle = "red")
+```
+
+
+
+
+
+row
+---------------------------------------------------------
+### Critère de Coude
+```{r}
+fviz_screeplot(res.pca,ncp=6)+theme_classic()
+```
+
+
+### Critère de Kaiser 
+```{r}
+res.pca$eig
+```
+
+
+Row
+-----------------------------------------------------
+### Analyse
+Selon le critère de coude nous n'avons pas pu déterminer les dimensions à rentir.
+Le graph de critère de coude ne contient pas d'une cassure significative.
+Automatiquement nous allos passé au critère de Kaiser , et on va choisir 
+les dimesions qui ont une valeur propres supérieur à 1.
+donc nous allons choisir les 3 premières dimensions qui ont des valeurs propres 
+de 1.47 , 1.17 et 1.02 avec un pourcentage d'inertie de 52.56% de la base 
+de données.
+Reste toujours à prendre en considération les 4 autres composantes parcequ'elles
+ont des valeurs propres très proches de 1.
+
+
+
+CLVALID
+========================================================
+
+
+
+
+row
+-----------------------------------------------
+```{r}
+library(clValid)
+library(cluster)
+```
+
+```{r}
+X=df
+X=as.matrix(X)
+X=scale(X)
+rownames(X) = 1:nrow(X)
+intern=clValid(X,2:6,clMethods = c("hierarchical", "kmeans", "diana"),
+               validation="internal")
+```
+
+
+### Résultat de validation
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+summary(intern)
+optimalScores(intern)
+```
+
+ Visualisation
+
+```{r}
+plot(intern)
+```
+
+
+ACH 
+=======================================================
+
+Row
+---------------------------------------------------
+
+```{r include=FALSE}
+df1=scale(df)
+d=dist(df1,method = "euclidean")
+CH=hclust(d,method = "ward.D")
+```
+
+### Effet de Coude 
+
+```{r}
+Variance=sort(CH$height,decreasing = TRUE)
+plot(rev(CH$height),type='b')
+```
+
+### Arbre hiérarchique
+```{r}
+dend=fviz_dend(CH,k=2,rect = TRUE,k_colors = c('red','blue'),main = 'Classification ascendante et hiérarhique')
+dend
+```
+
+```{r}
+Death=cutree(CH,k=2)
+df4=cbind.data.frame(df,Death)
+df4$Death[df4$Death == 1] <- "0"
+df4$Death[df4$Death == 2] <- "1"
+View(df4)
+```
+```{r}
+df4$Death=as.numeric(df4$Death)
+
+```
+
+
+
+LR
+=============================================
+
+row
+------------------------------------------------
+
+
+
+
+
+### Model-complet
+
+```{r}
+model_complet <- glm(Death ~ ., data=df4, family = binomial)
+summary(model_complet)
+```
+
+
+
+
+
+backword
+
+```{r}
+library(MASS)
+modele.backward <- stepAIC(model_complet,~., trace = TRUE, data = projet, direction = "backward")
+```
+
+
+
+
+
+Forword
+```{r}
+
+```
+
+
+
+
+
+
+Prediction
+```{r}
+
+```
+
